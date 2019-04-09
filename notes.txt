@@ -1,0 +1,5 @@
+age, gender model:
+    weights.18-4.06.hdf5 (https://github.com/petercunha/Emotion)
+    weights.28-3.73.hdf5 (https://github.com/yu4u/age-gender-estimation) trained on IMDB+WIKI
+    weights.29-3.76_utk.hdf5 (https://github.com/yu4u/age-gender-estimation) trained on UTKFace
+    * weights.18-4.06.hdf5, weights.28-3.73.hdf5, weights.29-3.76_utk.hdf5 準度差不多
