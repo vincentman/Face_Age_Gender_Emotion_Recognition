@@ -87,11 +87,13 @@ def make_dirs_for_emotion(video_file_name):
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--use_webcam', type=str2bool, default=True)
-    parser.add_argument('--webcam_port', type=int, default=0)
-    parser.add_argument('--input_video_path', type=str, default='input/dinner.mp4')
-    parser.add_argument('--output_emotion_images', type=str2bool, default=False)
-    parser.add_argument('--output_video', type=str2bool, default=False)
+    parser.add_argument('--use_webcam', type=str2bool, default=True, help='Specify if use webcam')
+    parser.add_argument('--webcam_port', type=int, default=0, help='Specify webcam port')
+    parser.add_argument('--input_video_path', type=str, default='input/dinner.mp4', help='Specify input video path')
+    parser.add_argument('--output_emotion_images', type=str2bool, default=False,
+                        help='Specify if output emotion images')
+    parser.add_argument('--output_video', type=str2bool, default=False, help='Specify if output video')
+    parser.add_argument('--slow_rate', type=float, default=1.0, help='Slower input fps')
     args = parser.parse_args()
     regex = re.compile(r'input\/(.+)')
     match = regex.search(args.input_video_path)
@@ -124,6 +126,7 @@ if __name__ == '__main__':
             if capture.isOpened() is False:
                 sys.exit('No video captured! Exit program~~~')
             input_video_props = get_input_video_file_props(capture)
+            capture.set(cv2.CAP_PROP_FPS, input_video_props.fps * args.slow_rate)
 
     make_dirs_for_emotion(args.input_video_fname)
 
@@ -131,8 +134,7 @@ if __name__ == '__main__':
     detected_emotions = set()
     if args.output_video:
         # fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
-        # fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        fourcc = cv2.VideoWriter_fourcc(*'divx')
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         out = cv2.VideoWriter('output/{}'.format(args.input_video_fname), fourcc,
                               input_video_props.fps,
                               (int(input_video_props.width), int(input_video_props.height)))
