@@ -3,7 +3,7 @@ This application performs an age/gender/emotion estimation based upon a
 video source (videofile or webcam)
 
 Usage:
-      python evaluate.py
+      python demo.py
 
 For now, switching input source is done with global variables in the source code
 
@@ -17,14 +17,13 @@ import numpy as np
 from keras.models import load_model
 import cv2
 from wide_resnet import WideResNet
-from utils.array import scale
-from utils.image import crop_bounding_box, draw_bounding_box_with_label
+from utils.image import crop_bounding_box, draw_bounding_box_with_label, scale
 import argparse
 from utils.utils import str2bool, get_input_video_file_props
 import os
-import re
 import time
 import sys
+
 
 # ResNet sizing
 DEPTH = 16
@@ -94,11 +93,63 @@ def get_args():
                         help='Specify if output emotion images')
     parser.add_argument('--output_video', type=str2bool, default=False, help='Specify if output video')
     parser.add_argument('--slow_rate', type=float, default=1.0, help='Slower input fps')
+    parser.add_argument('--face_confidence_threshold', type=float, default=0.2,
+                        help='Specify confidence threshold for OpenCV DNN face detection')
+    parser.add_argument('--use_haar', type=str2bool, default=False, help='Specify if use HAAR to do face detection')
     args = parser.parse_args()
-    regex = re.compile(r'input\/(.+)')
-    match = regex.search(args.input_video_path)
-    args.input_video_fname = match.group(1)
+    args.input_video_fname = os.path.basename(args.input_video_path)
     return args
+
+
+def detect_face_with_opencv_haar(face_detector, frame):
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    return face_detector.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+
+
+def detect_face_with_opecv_dnn(face_detector, frame, threshold):
+    # grab the frame dimensions and convert it to a blob
+    (h, w) = frame.shape[:2]
+    blob = cv2.dnn.blobFromImage(cv2.resize(frame, (300, 300)), 1.0, (300, 300), (104.0, 177.0, 123.0))
+    # pass the blob through the network and obtain the detections and predictions
+    face_detector.setInput(blob)
+    detections = face_detector.forward()
+
+    detected_faces = []
+    # loop over the detections
+    for i in range(0, detections.shape[2]):
+        # extract the confidence (i.e., probability) associated with the prediction
+        confidence = detections[0, 0, i, 2]
+
+        # filter out weak detections by ensuring the `confidence` is
+        # greater than the minimum confidence
+        if confidence < threshold:
+            continue
+
+        # compute the (x, y)-coordinates of the bounding box for the
+        # object
+        box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
+        (startX, startY, endX, endY) = box.astype("int")
+        detected_faces.append((startX, startY, endX - startX, endY - startY))
+
+    return detected_faces
+
+
+def get_face_detector(use_haar):
+    if use_haar:
+        # HAAR Cascade model for face detection
+        face_detector = cv2.CascadeClassifier(FACE_MODEL_PATH)
+    else:
+        # DNN model for face detection
+        face_detector = cv2.dnn.readNetFromCaffe('models/deploy.prototxt',
+                                                 'models/res10_300x300_ssd_iter_140000.caffemodel')
+    return face_detector
+
+
+def detect_face(args, frame):
+    if args.use_haar:
+        return detect_face_with_opencv_haar(face_detector, frame)
+    else:
+        return detect_face_with_opecv_dnn(face_detector, frame, args.face_confidence_threshold)
 
 
 if __name__ == '__main__':
@@ -114,8 +165,7 @@ if __name__ == '__main__':
     emotion_model = load_model(EMOTION_MODEL_PATH)
     emotion_target_size = emotion_model.input_shape[1:3]
 
-    # Cascade model for face detection
-    face_cascade = cv2.CascadeClassifier(FACE_MODEL_PATH)
+    face_detector = get_face_detector(args.use_haar)
 
     # Select video or webcam feed
     if args.use_webcam:
@@ -136,7 +186,7 @@ if __name__ == '__main__':
         # fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         out = cv2.VideoWriter('output/{}'.format(args.input_video_fname), fourcc,
-                              input_video_props.fps,
+                              input_video_props.fps * args.slow_rate,
                               (int(input_video_props.width), int(input_video_props.height)))
 
     while capture.isOpened():
@@ -146,16 +196,16 @@ if __name__ == '__main__':
             break
 
         frame_idx += 1
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
         # Detect faces
         face_detect_start = time.time()
-        faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+        faces = detect_face(args, frame)
         face_detect_end = time.time()
         print('Detecting {} faces: {:.2f}s'.format(len(faces), face_detect_end - face_detect_start))
 
         for face_idx, face in enumerate(faces):
             # Get face image, cropped to the size accepted by the WideResNet
+            # face: (x, y, w, h)
             face_img, cropped, no_resized_img = crop_bounding_box(frame, face, margin=.4, size=(FACE_SIZE, FACE_SIZE))
             (x, y, w, h) = cropped
 

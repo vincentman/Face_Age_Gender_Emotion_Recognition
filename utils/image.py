@@ -39,3 +39,16 @@ def draw_bounding_box_with_label(image, x, y, w, h, label):
     cv2.rectangle(image, (x, y), (x + w, y + h), (255, 200, 0), 2)
     # cv2.rectangle(image, (x, y - size[1]), (x + size[0], y), (255, 0, 0), cv2.FILLED)
     cv2.putText(image, label, (x, y+20), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+
+
+def scale(array):
+    """
+    Scale values in x from [0..255] to [-1, 1]
+    :param array: array to scale
+    :return: rescaled array (float values)
+    """
+    array = array.astype('float32')
+    array = array / 255.0
+    array = array - 0.5
+    array = array * 2.0
+    return array
