@@ -176,64 +176,7 @@ def main():
         fer_ages.shape,
         fer_emotions.shape))
 
-    # expand fer2013
-    # logging.debug("Expand fer2013...")
-    # if len(fer_imgs) >= len(imdb_imgs):
-    #     sys.exit('Merge data failed! The number of emotion data is larger than that of agender data.')
-    # else:
-    #     extend_factor = round(len(imdb_imgs) / len(fer_imgs))
-    #     fer_imgs = np.tile(fer_imgs, (extend_factor, 1, 1, 1))
-    #     fer_genders = np.tile(fer_genders, (extend_factor, 1))
-    #     fer_ages = np.tile(fer_ages, (extend_factor, 1))
-    #     fer_emotions = np.tile(fer_emotions, (extend_factor, 1))
-    # print('fer_imgs.shape: {}, fer_genders.shape: {}, fer_ages.shape: {}, fer_emotions.shape: {}'.format(
-    #     fer_imgs.shape, fer_genders.shape,
-    #     fer_ages.shape,
-    #     fer_emotions.shape))
-
-    # merge imdb and fer2013
-    # logging.debug("Merge data...")
-    # X = np.vstack((imdb_imgs, fer_imgs))
-    # del imdb_imgs, fer_imgs
-    # y_genders = np.vstack((imdb_genders, fer_genders))
-    # del imdb_genders, fer_genders
-    # y_ages = np.vstack((imdb_ages, fer_ages))
-    # del imdb_ages, fer_ages
-    # y_emotions = np.vstack((imdb_emotions, fer_emotions))
-    # del imdb_emotions, fer_emotions
-    # print('X.shape: {}, y_genders.shape: {}, y_ages.shape: {}, y_emotions.shape: {}'.format(
-    #     X.shape, y_genders.shape,
-    #     y_ages.shape,
-    #     y_emotions.shape))
-
-    # not merge
-    # logging.debug("Not merge data...")
-    # X = imdb_imgs
-    # del imdb_imgs, fer_imgs
-    # y_genders = imdb_genders
-    # del imdb_genders, fer_genders
-    # y_ages = imdb_ages
-    # del imdb_ages, fer_ages
-    # y_emotions = imdb_emotions
-    # del imdb_emotions, fer_emotions
-    # print('X.shape: {}, y_genders.shape: {}, y_ages.shape: {}, y_emotions.shape: {}'.format(
-    #     X.shape, y_genders.shape,
-    #     y_ages.shape,
-    #     y_emotions.shape))
-
     logging.debug("Splitting data...")
-    # split data into train and validate set
-    # X_train, X_val, y_genders_train, y_genders_val, y_ages_train, y_ages_val, y_emotions_train, y_emotions_val = train_test_split(
-    #     X, y_genders, y_ages, y_emotions, test_size=validation_split, shuffle=False)
-    # del X, y_genders, y_ages, y_emotions
-    # print(
-    #     'X_train.shape: {}, X_val.shape: {}, y_genders_train.shape: {}, y_genders_val.shape: {}, y_ages_train.shape: {} \
-    #     , y_ages_val.shape: {}, y_emotions_train.shape: {}, y_emotions_val.shape: {}'.format(
-    #         X_train.shape,
-    #         X_val.shape,
-    #         y_genders_train.shape,
-    #         y_genders_val.shape, y_ages_train.shape,
-    #         y_ages_val.shape, y_emotions_train.shape, y_emotions_val.shape))
     # split imdb into train and validate set
     imdb_imgs_train, imdb_imgs_val, imdb_genders_train, imdb_genders_val, imdb_ages_train, imdb_ages_val, imdb_emotions_train, imdb_emotions_val \
         = train_test_split(
