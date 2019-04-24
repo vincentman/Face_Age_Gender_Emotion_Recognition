@@ -138,13 +138,9 @@ def sample_generator(imdb_train, fer_train, batch_size=32):
         selected_fer_ages = fer_ages_train[selected_fer_idx]
         selected_fer_emotions = fer_emotions_train[selected_fer_idx]
         X_train = np.vstack((selected_imdb_imgs, selected_fer_imgs))
-        # del selected_imdb_imgs, selected_fer_imgs
         y_genders_train = np.vstack((selected_imdb_genders, selected_fer_genders))
-        # del selected_imdb_genders, selected_fer_genders
         y_ages_train = np.vstack((selected_imdb_ages, selected_fer_ages))
-        # del selected_imdb_ages, selected_fer_ages
         y_emotions_train = np.vstack((selected_imdb_emotions, selected_fer_emotions))
-        # del selected_imdb_emotions, selected_fer_emotions
         yield X_train, [y_genders_train, y_ages_train, y_emotions_train]
 
 
@@ -216,7 +212,6 @@ def main():
         imdb_emotions,
         test_size=validation_split,
         shuffle=False)
-    # del imdb_imgs, imdb_genders, imdb_ages, imdb_emotions
     print(
         'imdb_imgs_train.shape: {}, imdb_imgs_val.shape: {}, imdb_genders_train.shape: {}, imdb_genders_val.shape: {}, imdb_ages_train.shape: {} \
         , imdb_ages_val.shape: {}, imdb_emotions_train.shape: {}, imdb_emotions_val.shape: {}'.format(
@@ -234,7 +229,6 @@ def main():
         fer_emotions,
         test_size=validation_split,
         shuffle=False)
-    # del fer_imgs, fer_genders, fer_ages, fer_emotions
     print(
         'fer_imgs_train.shape: {}, fer_imgs_val.shape: {}, fer_genders_train.shape: {}, fer_genders_val.shape: {}, fer_ages_train.shape: {} \
         , fer_ages_val.shape: {}, fer_emotions_train.shape: {}, fer_emotions_val.shape: {}'.format(
@@ -245,15 +239,11 @@ def main():
             fer_ages_val.shape, fer_emotions_train.shape, fer_emotions_val.shape))
 
     # merge imdb and fer2013 validate set
-    logging.debug("Merge data...")
+    logging.debug("Merge validation set...")
     X_val = np.vstack((imdb_imgs_val, fer_imgs_val))
-    # del imdb_imgs_val, fer_imgs_val
     y_genders_val = np.vstack((imdb_genders_val, fer_genders_val))
-    # del imdb_genders_val, fer_genders_val
     y_ages_val = np.vstack((imdb_ages_val, fer_ages_val))
-    # del imdb_ages_val, fer_ages_val
     y_emotions_val = np.vstack((imdb_emotions_val, fer_emotions_val))
-    # del imdb_emotions_val, fer_emotions_val
 
     model = WideResNet(image_size, depth=depth, k=k)()
     opt = get_optimizer(opt_name, lr)
@@ -265,7 +255,6 @@ def main():
                         'output_emotion': 'categorical_crossentropy'},
                   metrics={'output_gender': 'accuracy', 'output_age': myMAE,
                            'output_emotion': 'accuracy'})
-    # metrics=['accuracy'])
 
     logging.debug("Model summary...")
     model.count_params()
