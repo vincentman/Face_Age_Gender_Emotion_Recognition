@@ -3,7 +3,7 @@ import logging
 import argparse
 from pathlib import Path
 import numpy as np
-from keras.callbacks import LearningRateScheduler, ModelCheckpoint
+from keras.callbacks import LearningRateScheduler, ModelCheckpoint, CSVLogger
 from keras.optimizers import SGD, Adam
 from keras.utils import np_utils
 from wide_resnet import WideResNet
@@ -17,10 +17,12 @@ import sys
 import keras
 import tensorflow as tf
 from keras.callbacks import TensorBoard
+from sklearn.utils import class_weight
 
 logging.basicConfig(level=logging.DEBUG)
 image_size = 64
 emotion_class_num = 7
+small_volume = 0
 
 
 def get_args():
@@ -32,7 +34,7 @@ def get_args():
                         help="path to input database file of emotion")
     parser.add_argument("--batch_size", type=int, default=32,
                         help="batch size")
-    parser.add_argument("--nb_epochs", type=int, default=1,
+    parser.add_argument("--nb_epochs", type=int, default=30,
                         help="number of epochs")
     parser.add_argument("--lr", type=float, default=0.1,
                         help="initial learning rate")
@@ -48,26 +50,28 @@ def get_args():
                         help="use data augmentation if set true")
     parser.add_argument("--output_path", type=str, default="checkpoints",
                         help="checkpoint dir")
+    parser.add_argument('--staircase_decay_at_epochs',
+                        type=eval, default=(5, 8,))
     args = parser.parse_args()
     return args
 
 
-# class Schedule:
-#     def __init__(self, nb_epochs, initial_lr):
-#         self.epochs = nb_epochs
-#         self.initial_lr = initial_lr
-#
-#     def __call__(self, epoch_idx):
-#         if epoch_idx < self.epochs * 0.25:
-#             return self.initial_lr
-#         elif epoch_idx < self.epochs * 0.50:
-#             return self.initial_lr * 0.2
-#         elif epoch_idx < self.epochs * 0.75:
-#             return self.initial_lr * 0.04
-#         return self.initial_lr * 0.008
-
-
 class Schedule:
+    def __init__(self, nb_epochs, initial_lr):
+        self.epochs = nb_epochs
+        self.initial_lr = initial_lr
+
+    def __call__(self, epoch_idx):
+        if epoch_idx < self.epochs * 0.25:
+            return self.initial_lr
+        elif epoch_idx < self.epochs * 0.50:
+            return self.initial_lr * 0.2
+        elif epoch_idx < self.epochs * 0.75:
+            return self.initial_lr * 0.04
+        return self.initial_lr * 0.008
+
+
+class NewSchedule:
     def __init__(self, nb_epochs, initial_lr):
         self.epochs = nb_epochs
         self.initial_lr = initial_lr
@@ -80,6 +84,21 @@ class Schedule:
         elif epoch_idx < self.epochs * 0.75:
             return self.initial_lr * 0.1
         return self.initial_lr * 0.1
+
+
+class StaircaseSchedule:
+    def __init__(self, staircase_decay_at_epochs, initial_lr):
+        self.staircase_decay_at_epochs = staircase_decay_at_epochs
+        self.initial_lr = initial_lr
+
+    def __call__(self, epoch_idx):
+        decay_idx = -1
+        for i, decay_at_epoch in enumerate(self.staircase_decay_at_epochs):
+            if (epoch_idx+1) == decay_at_epoch:
+                decay_idx = i
+        lr = self.initial_lr * 0.1 ** (decay_idx + 1)
+        print('lr is adjusted as {} at {}-th epoch.'.format(lr, epoch_idx + 1))
+        return lr
 
 
 def get_optimizer(opt_name, lr):
@@ -119,13 +138,13 @@ def sample_generator(imdb_train, fer_train, batch_size=32):
         selected_fer_ages = fer_ages_train[selected_fer_idx]
         selected_fer_emotions = fer_emotions_train[selected_fer_idx]
         X_train = np.vstack((selected_imdb_imgs, selected_fer_imgs))
-        del selected_imdb_imgs, selected_fer_imgs
+        # del selected_imdb_imgs, selected_fer_imgs
         y_genders_train = np.vstack((selected_imdb_genders, selected_fer_genders))
-        del selected_imdb_genders, selected_fer_genders
+        # del selected_imdb_genders, selected_fer_genders
         y_ages_train = np.vstack((selected_imdb_ages, selected_fer_ages))
-        del selected_imdb_ages, selected_fer_ages
+        # del selected_imdb_ages, selected_fer_ages
         y_emotions_train = np.vstack((selected_imdb_emotions, selected_fer_emotions))
-        del selected_imdb_emotions, selected_fer_emotions
+        # del selected_imdb_emotions, selected_fer_emotions
         yield X_train, [y_genders_train, y_ages_train, y_emotions_train]
 
 
@@ -142,6 +161,7 @@ def main():
     batch_size = args.batch_size
     nb_epochs = args.nb_epochs
     lr = args.lr
+    staircase_decay_at_epochs = args.staircase_decay_at_epochs
     opt_name = args.opt
     depth = args.depth
     k = args.width
@@ -154,6 +174,12 @@ def main():
     # load imdb: 171852 images
     # loadk wiki: 38138 images
     imdb_imgs, imdb_genders, imdb_ages, _, _, _ = load_imdb_or_wiki(input_agender_path)
+    # gender_class_weight = class_weight.compute_class_weight('balanced', np.unique(imdb_genders), imdb_genders)
+    # age_class_weight = class_weight.compute_class_weight('balanced', np.unique(imdb_ages), imdb_ages)
+    if small_volume != 0:
+        imdb_imgs = imdb_imgs[0:small_volume]
+        imdb_genders = imdb_genders[0:small_volume]
+        imdb_ages = imdb_ages[0:small_volume]
     imdb_genders = np_utils.to_categorical(imdb_genders, 2)
     imdb_ages = np_utils.to_categorical(imdb_ages, 101)
     imdb_emotions = np.full((len(imdb_imgs), emotion_class_num), 0)
@@ -165,6 +191,10 @@ def main():
 
     # load fer2013: 35887 images
     fer_imgs, fer_emotions = load_fer2013(input_emotion_path, resize=(image_size, image_size))
+    # emotion_class_weight = class_weight.compute_class_weight('balanced', np.unique(fer_emotions), fer_emotions)
+    if small_volume != 0:
+        fer_imgs = fer_imgs[0:small_volume]
+        fer_emotions = fer_emotions[0:small_volume]
     fer_imgs = np.squeeze(np.stack((fer_imgs,) * 3, -1))  # convert gray into color
     fer_emotions = pd.get_dummies(fer_emotions).as_matrix()
     fer_genders = np.full((len(fer_imgs), 2), 0)
@@ -186,7 +216,7 @@ def main():
         imdb_emotions,
         test_size=validation_split,
         shuffle=False)
-    del imdb_imgs, imdb_genders, imdb_ages, imdb_emotions
+    # del imdb_imgs, imdb_genders, imdb_ages, imdb_emotions
     print(
         'imdb_imgs_train.shape: {}, imdb_imgs_val.shape: {}, imdb_genders_train.shape: {}, imdb_genders_val.shape: {}, imdb_ages_train.shape: {} \
         , imdb_ages_val.shape: {}, imdb_emotions_train.shape: {}, imdb_emotions_val.shape: {}'.format(
@@ -204,7 +234,7 @@ def main():
         fer_emotions,
         test_size=validation_split,
         shuffle=False)
-    del fer_imgs, fer_genders, fer_ages, fer_emotions
+    # del fer_imgs, fer_genders, fer_ages, fer_emotions
     print(
         'fer_imgs_train.shape: {}, fer_imgs_val.shape: {}, fer_genders_train.shape: {}, fer_genders_val.shape: {}, fer_ages_train.shape: {} \
         , fer_ages_val.shape: {}, fer_emotions_train.shape: {}, fer_emotions_val.shape: {}'.format(
@@ -217,13 +247,13 @@ def main():
     # merge imdb and fer2013 validate set
     logging.debug("Merge data...")
     X_val = np.vstack((imdb_imgs_val, fer_imgs_val))
-    del imdb_imgs_val, fer_imgs_val
+    # del imdb_imgs_val, fer_imgs_val
     y_genders_val = np.vstack((imdb_genders_val, fer_genders_val))
-    del imdb_genders_val, fer_genders_val
+    # del imdb_genders_val, fer_genders_val
     y_ages_val = np.vstack((imdb_ages_val, fer_ages_val))
-    del imdb_ages_val, fer_ages_val
+    # del imdb_ages_val, fer_ages_val
     y_emotions_val = np.vstack((imdb_emotions_val, fer_emotions_val))
-    del imdb_emotions_val, fer_emotions_val
+    # del imdb_emotions_val, fer_emotions_val
 
     model = WideResNet(image_size, depth=depth, k=k)()
     opt = get_optimizer(opt_name, lr)
@@ -242,15 +272,16 @@ def main():
     model.summary()
     # print(model.get_layer(name='conv2d_1').kernel_regularizer)
 
-    tensorBoard = TensorBoard(log_dir='./logs', write_graph=True, write_images=True)
-
-    callbacks = [LearningRateScheduler(schedule=Schedule(nb_epochs, lr)),
+    lr_schedule = LearningRateScheduler(schedule=StaircaseSchedule(staircase_decay_at_epochs, lr))
+    # lr_schedule = LearningRateScheduler(schedule=Schedule(nb_epochs, lr))
+    callbacks = [lr_schedule,
                  ModelCheckpoint(str(output_path) + "/weights.{epoch:02d}-{val_loss:.2f}.hdf5",
                                  monitor="val_loss",
                                  verbose=1,
                                  save_best_only=True,
                                  mode="auto"),
-                 tensorBoard
+                 TensorBoard(log_dir='./logs', write_graph=True, write_images=True),
+                 CSVLogger('logs/train_log.csv', append=False)
                  ]
 
     logging.debug("Running training...")
@@ -287,6 +318,10 @@ def main():
     #                  epochs=nb_epochs,
     #                  callbacks=callbacks,
     #                  validation_data=(X_val, [y_genders_val, y_ages_val, y_emotions_val]))
+
+    # fit_class_weight = {'output_gender': dict(enumerate(gender_class_weight)),
+    #                     'output_age': dict(enumerate(age_class_weight)),
+    #                     'output_emotion': dict(enumerate(emotion_class_weight))}
     hist = model.fit_generator(
         generator=sample_generator((imdb_imgs_train, imdb_genders_train, imdb_ages_train, imdb_emotions_train),
                                    (fer_imgs_train, fer_genders_train, fer_ages_train, fer_emotions_train),
