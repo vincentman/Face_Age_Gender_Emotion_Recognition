@@ -9,6 +9,8 @@ from keras.layers.convolutional import Conv2D, AveragePooling2D
 from keras.layers.normalization import BatchNormalization
 from keras.regularizers import l2
 from keras import backend as K
+from keras import initializers
+
 
 sys.setrecursionlimit(2 ** 20)
 np.random.seed(2 ** 10)
@@ -21,7 +23,8 @@ class WideResNet:
         self._dropout_probability = 0
         self._weight_decay = 0.0005
         self._use_bias = False
-        self._weight_init = "he_normal"
+        self._weight_init = initializers.random_normal(stddev=0.01)
+        # self._weight_init = "he_normal"
 
         if K.image_dim_ordering() == "th":
             logging.debug("image_dim_ordering = 'th'")
