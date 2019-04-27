@@ -19,10 +19,18 @@ import tensorflow as tf
 from keras.callbacks import TensorBoard
 from sklearn.utils import class_weight
 
+
 logging.basicConfig(level=logging.DEBUG)
 image_size = 64
 emotion_class_num = 7
 small_volume = 0
+
+import tensorflow as tf
+from keras.backend.tensorflow_backend import set_session
+config = tf.ConfigProto()
+# config.gpu_options.per_process_gpu_memory_fraction = 0.1
+config.gpu_options.allow_growth = True
+set_session(tf.Session(config=config))
 
 
 def get_args():
