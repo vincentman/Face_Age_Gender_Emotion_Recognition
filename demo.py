@@ -3,7 +3,7 @@ This application performs an age/gender/emotion estimation based upon a
 video source (videofile or webcam)
 
 Usage:
-      python demo.py
+      python demo_old.py
 
 For now, switching input source is done with global variables in the source code
 
@@ -23,6 +23,7 @@ from utils.utils import str2bool, get_input_video_file_props
 import os
 import time
 import sys
+from my_keras_model import get_mobilenet_v2, get_opconty_shufflenet_v2
 
 
 # ResNet sizing
@@ -33,50 +34,38 @@ WIDTH = 8
 FACE_SIZE = 64
 
 # Model location
-# Face model from CV2 (Haar cascade)
-FACE_MODEL_PATH = 'models/haarcascade_frontalface_alt.xml'
-# Gender and Age model from
-# https://github.com/Tony607/Keras_age_gender (weights.18-4.06.hdf5)
-# https://github.com/yu4u/age-gender-estimation (weights.28-3.73.hdf5, weights.29-3.76_utk.hdf5)
-# with Wide ResNet from https://github.com/asmith26/wide_resnets_keras
-AGENDER_MODEL_PATH = 'models/weights.28-3.73.hdf5'
-# Emotion model from https://github.com/petercunha/Emotion
-EMOTION_MODEL_PATH = 'models/emotion_model.hdf5'
+FACE_MODEL_PATH = 'pretrained_models/haarcascade_frontalface_alt.xml'
+# FACE_MODEL_PATH = 'pretrained_models/haarcascade_frontalface_alt2.xml'
+# FACE_MODEL_PATH = 'pretrained_models/lbpcascade_frontalface_improved.xml'
+# FACE_MODEL_PATH = 'pretrained_models/haarcascade_frontalface_alt_tree.xml'
+# FACE_MODEL_PATH = 'pretrained_models/haarcascade_frontalface_default.xml'
+
+FACE_CAFFE_MODEL_TXT_PATH = 'pretrained_models/deploy.prototxt'
+FACE_CAFFE_MODEL_PATH = 'pretrained_models/res10_300x300_ssd_iter_140000.caffemodel'
+
+# MY_MODEL_PATH = 'my_trained/01/weights.09-3.70.hdf5'  # 16,16,epoch30: normal
+# MY_MODEL_PATH = 'my_trained/02/weights.03-4.73.hdf5'  # 20,12,epoch30: abnormal
+# MY_MODEL_PATH = 'checkpoints/weights.07-3.74.hdf5'
+MY_MODEL_PATH = 'my_trained/15/model.h5'
+# MY_MODEL_PATH = 'my_trained/09/weights.05-3.74.hdf5'
 
 # saved dir for detected images
 DET_EMOTION_DIR = 'output/emotion_images'
 
 
-def get_age_gender(face_image):
-    """
-    Determine the age and gender of the face in the picture
-    :param face_image: image of the face
-    :return: (age, gender) of the image
-    """
+def get_gender_age_emotion(face_image):
     face_imgs = np.empty((1, FACE_SIZE, FACE_SIZE, 3))
     face_imgs[0, :, :, :] = face_image
-    result = agender_model.predict(face_imgs)
-    est_gender = "F" if result[0][0][0] > 0.5 else "M"
-    est_age = int(result[1][0].dot(np.arange(0, 101).reshape(101, 1)).flatten()[0])
-    return est_age, est_gender
-
-
-def get_emotion(face_image):
-    """
-    Determine the age and gender of the face in the picture
-    :param face_image: image of the face
-    :return: str:emotion of the image
-    """
-    gray_face = cv2.cvtColor(face_image, cv2.COLOR_BGR2GRAY)
-    gray_face = scale(gray_face)
-    gray_face = np.expand_dims(gray_face, 0)
-    gray_face = np.expand_dims(gray_face, -1)
-
-    # Get EMOTION
-    emotion_prediction = emotion_model.predict(gray_face)
-    emotion_probability = np.max(emotion_prediction)
-    emotion_label_arg = np.argmax(emotion_prediction)
-    return emotion_labels[emotion_label_arg]
+    result = my_model.predict(face_imgs)
+    output_gender = result[0][0]
+    gender = "F" if output_gender[0] > 0.5 else "M"
+    output_age = result[1][0]
+    age = int(output_age.dot(np.arange(0, 101).reshape(101, 1)).flatten()[0])
+    output_emotion = result[2][0]
+    emotion_probability = np.max(output_emotion)
+    emotion_label_arg = np.argmax(output_emotion)
+    emotion = emotion_labels[emotion_label_arg]
+    return gender, age, emotion
 
 
 def make_dirs_for_emotion(video_file_name):
@@ -95,7 +84,8 @@ def get_args():
     parser.add_argument('--slow_rate', type=float, default=1.0, help='Slower input fps')
     parser.add_argument('--face_confidence_threshold', type=float, default=0.2,
                         help='Specify confidence threshold for OpenCV DNN face detection')
-    parser.add_argument('--use_haar', type=str2bool, default=False, help='Specify if use HAAR to do face detection')
+    parser.add_argument('--use_cascade', type=str2bool, default=False,
+                        help='Specify if use Cascade to do face detection')
     args = parser.parse_args()
     args.input_video_fname = os.path.basename(args.input_video_path)
     return args
@@ -134,19 +124,19 @@ def detect_face_with_opecv_dnn(face_detector, frame, threshold):
     return detected_faces
 
 
-def get_face_detector(use_haar):
-    if use_haar:
+def get_face_detector(use_cascade):
+    if use_cascade:
         # HAAR Cascade model for face detection
         face_detector = cv2.CascadeClassifier(FACE_MODEL_PATH)
     else:
         # DNN model for face detection
-        face_detector = cv2.dnn.readNetFromCaffe('models/deploy.prototxt',
-                                                 'models/res10_300x300_ssd_iter_140000.caffemodel')
+        face_detector = cv2.dnn.readNetFromCaffe(FACE_CAFFE_MODEL_TXT_PATH,
+                                                 FACE_CAFFE_MODEL_PATH)
     return face_detector
 
 
 def detect_face(args, frame):
-    if args.use_haar:
+    if args.use_cascade:
         return detect_face_with_opencv_haar(face_detector, frame)
     else:
         return detect_face_with_opecv_dnn(face_detector, frame, args.face_confidence_threshold)
@@ -154,18 +144,15 @@ def detect_face(args, frame):
 
 if __name__ == '__main__':
     args = get_args()
-
-    # WideResNet model for Age and Gender
-    agender_model = WideResNet(FACE_SIZE, depth=DEPTH, k=WIDTH)()
-    agender_model.load_weights(AGENDER_MODEL_PATH)
-
-    # VCC model for emotions
     emotion_labels = {0: 'angry', 1: 'disgust', 2: 'fear', 3: 'happy', 4: 'sad',
                       5: 'surprise', 6: 'neutral'}
-    emotion_model = load_model(EMOTION_MODEL_PATH)
-    emotion_target_size = emotion_model.input_shape[1:3]
 
-    face_detector = get_face_detector(args.use_haar)
+    my_model = get_opconty_shufflenet_v2()
+    # my_model = get_mobilenet_v2()
+    # my_model = WideResNet(FACE_SIZE, depth=DEPTH, k=WIDTH)()
+    my_model.load_weights(MY_MODEL_PATH)
+
+    face_detector = get_face_detector(args.use_cascade)
 
     # Select video or webcam feed
     if args.use_webcam:
@@ -201,7 +188,7 @@ if __name__ == '__main__':
         face_detect_start = time.time()
         faces = detect_face(args, frame)
         face_detect_end = time.time()
-        print('Detecting {} faces: {:.2f}s'.format(len(faces), face_detect_end - face_detect_start))
+        print('Detecting {} faces: {:.2f}ms'.format(len(faces), (face_detect_end - face_detect_start) * 1000))
 
         for face_idx, face in enumerate(faces):
             # Get face image, cropped to the size accepted by the WideResNet
@@ -210,14 +197,24 @@ if __name__ == '__main__':
             (x, y, w, h) = cropped
 
             # Get AGE and GENDER and EMOTION
-            agender_detect_start = time.time()
-            (age, gender) = get_age_gender(face_img)
-            agender_detect_end = time.time()
-            print('Predicting age and gender for one face: {:.2f}s'.format(agender_detect_end - agender_detect_start))
-            emotion_detect_start = time.time()
-            emotion = get_emotion(face_img)
-            emotion_detect_end = time.time()
-            print('Predicting emotion for one face: {:.2f}s'.format(emotion_detect_end - emotion_detect_start))
+            # agender_detect_start = time.time()
+            # (age, gender) = get_age_gender(face_img)
+            # agender_detect_end = time.time()
+            # print('Predicting age and gender for one face: {:.2f}ms'.format(
+            #     (agender_detect_end - agender_detect_start) * 1000))
+            # emotion_detect_start = time.time()
+            # emotion = get_emotion(face_img)
+            # emotion_detect_end = time.time()
+            # print(
+            #     'Predicting emotion for one face: {:.2f}ms'.format((emotion_detect_end - emotion_detect_start) * 1000))
+
+            # get gender, age, emotion
+            predict_start = time.time()
+            # get_gender_age_emotion(face_img)
+            (gender, age, emotion) = get_gender_age_emotion(face_img)
+            predict_end = time.time()
+            print('Predicting gender, age, and emotion for one face: {:.2f}ms'.format(
+                (predict_end - predict_start) * 1000))
 
             # save image for each emotion
             detected_emotions.add(emotion)
