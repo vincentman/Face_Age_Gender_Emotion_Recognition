@@ -265,8 +265,12 @@ def main():
                            'output_emotion': 'accuracy'})
 
     logging.debug("Model summary...")
-    model.count_params()
+    # model.count_params()
     model.summary()
+    # Total params: 25,381,360
+    # Trainable params: 25,374,160
+    # Non-trainable params: 7,200
+
     # print(model.get_layer(name='conv2d_1').kernel_regularizer)
 
     lr_schedule = LearningRateScheduler(schedule=StaircaseSchedule(staircase_decay_at_epochs, lr))

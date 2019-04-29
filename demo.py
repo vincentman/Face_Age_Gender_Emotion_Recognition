@@ -45,8 +45,10 @@ FACE_CAFFE_MODEL_PATH = 'pretrained_models/res10_300x300_ssd_iter_140000.caffemo
 
 # MY_MODEL_PATH = 'my_trained/01/weights.09-3.70.hdf5'  # 16,16,epoch30: normal
 # MY_MODEL_PATH = 'my_trained/02/weights.03-4.73.hdf5'  # 20,12,epoch30: abnormal
-# MY_MODEL_PATH = 'checkpoints/weights.07-3.74.hdf5'
-MY_MODEL_PATH = 'my_trained/15/model.h5'
+# MY_MODEL_PATH = 'checkpoints/weights.09-3.83.hdf5'
+# MY_MODEL_PATH = 'checkpoints/model.h5'
+MY_MODEL_PATH = 'my_trained/18/model.h5'
+# MY_MODEL_PATH = 'my_trained/17/weights.02-3.85.hdf5'
 # MY_MODEL_PATH = 'my_trained/09/weights.05-3.74.hdf5'
 
 # saved dir for detected images

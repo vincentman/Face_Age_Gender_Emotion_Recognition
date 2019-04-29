@@ -8,10 +8,9 @@ from opconty_shufflenetv2 import ShuffleNetV2
 
 def get_mobilenet_v2(weight_decay=0.0005, input_shape=(64, 64, 3)):
     keras_model = MobileNetV2(input_shape=input_shape, include_top=False, weights=None)
-    # print("Keras MobileNetV2 summary:")
     # keras_model.summary()
-    # Total params: 3,538,984
-    # Trainable params: 3,504,872
+    # Total params: 2,257,984
+    # Trainable params: 2,223,872
     # Non-trainable params: 34,112
 
     for layer in keras_model.layers:
@@ -22,7 +21,13 @@ def get_mobilenet_v2(weight_decay=0.0005, input_shape=(64, 64, 3)):
     predictions_a = Dense(101, activation='softmax', kernel_regularizer=l2(weight_decay), name='output_age')(flatten)
     predictions_e = Dense(7, activation='softmax', kernel_regularizer=l2(weight_decay), name='output_emotion')(flatten)
 
-    return Model(inputs=keras_model.layers[0].input, outputs=[predictions_g, predictions_a, predictions_e])
+    model = Model(inputs=keras_model.layers[0].input, outputs=[predictions_g, predictions_a, predictions_e])
+    # model.summary()
+    # Total params: 2,821,294
+    # Trainable params: 2,787,182
+    # Non-trainable params: 34,112
+
+    return model
 
 
 def get_shufflenet_v2(weight_decay=0.0005):
@@ -44,7 +49,6 @@ def get_shufflenet_v2(weight_decay=0.0005):
 
 def get_opconty_shufflenet_v2(weight_decay=0.0005):
     opconty_model = ShuffleNetV2(include_top=False, pooling='avg', input_shape=(64, 64, 3))
-    # print("opconty ShuffleNetV2 summary:")
     # opconty_model.summary()
     # Total params: 4,018,740
     # Trainable params: 3,990,620
@@ -61,5 +65,9 @@ def get_opconty_shufflenet_v2(weight_decay=0.0005):
     predictions_e = Dense(7, activation='softmax', kernel_regularizer=l2(weight_decay), name='output_emotion')(
         flatten)
     model = Model(inputs=opconty_model.layers[0].input, outputs=[predictions_g, predictions_a, predictions_e])
+    # model.summary()
+    # Total params: 4,131,490
+    # Trainable params: 4,103,370
+    # Non-trainable params: 28,120
 
     return model
