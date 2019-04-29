@@ -6,7 +6,7 @@ import numpy as np
 from keras.callbacks import LearningRateScheduler, ModelCheckpoint, CSVLogger
 from keras.optimizers import SGD, Adam
 from keras.utils import np_utils
-from my_keras_model import get_opconty_shufflenet_v2
+from my_keras_model import get_opconty_shufflenet_v2, get_mobilenet_v2
 from utils.datasets import load_imdb_or_wiki, load_fer2013, split_data
 from keras.preprocessing.image import ImageDataGenerator
 from utils.image import get_random_eraser
@@ -37,6 +37,8 @@ def get_args():
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--input_agender", "-ia", type=str, required=True,
                         help="path to input database mat file of age and gender")
+    parser.add_argument("--input_wiki", type=str, required=False,
+                        help="path to input database mat file of wiki")
     parser.add_argument("--input_emotion", "-ie", type=str, required=True,
                         help="path to input database file of emotion")
     parser.add_argument("--batch_size", type=int, default=32,
@@ -157,10 +159,29 @@ def myMAE(y_true, y_pred):
     return K.abs(pred_age - label_age)
 
 
+def load_wiki(input_wiki_path):
+    wiki_imgs, wiki_genders, wiki_ages, _, _, _ = load_imdb_or_wiki(input_wiki_path)
+    if small_volume != 0:
+        wiki_imgs = wiki_imgs[0:small_volume]
+        wiki_genders = wiki_genders[0:small_volume]
+        wiki_ages = wiki_ages[0:small_volume]
+    wiki_genders = np_utils.to_categorical(wiki_genders, 2)
+    wiki_ages = np_utils.to_categorical(wiki_ages, 101)
+    wiki_emotions = np.full((len(wiki_imgs), emotion_class_num), 0)
+    # wiki_emotions = np.full((len(wiki_imgs), emotion_class_num), -1, dtype=np.int8)
+    print('wiki_imgs.shape: {}, wiki_genders.shape: {}, wiki_ages.shape: {}, wiki_emotions.shape: {}'.format(
+        wiki_imgs.shape, wiki_genders.shape,
+        wiki_ages.shape,
+        wiki_emotions.shape))
+
+    return wiki_imgs, wiki_genders, wiki_ages, wiki_emotions
+
+
 def main():
     args = get_args()
     input_agender_path = args.input_agender
     input_emotion_path = args.input_emotion
+    input_wiki_path = args.input_wiki
     batch_size = args.batch_size
     nb_epochs = args.nb_epochs
     lr = args.lr
@@ -175,7 +196,6 @@ def main():
 
     logging.debug("Loading data...")
     # load imdb: 171852 images
-    # loadk wiki: 38138 images
     imdb_imgs, imdb_genders, imdb_ages, _, _, _ = load_imdb_or_wiki(input_agender_path)
     # gender_class_weight = class_weight.compute_class_weight('balanced', np.unique(imdb_genders), imdb_genders)
     # age_class_weight = class_weight.compute_class_weight('balanced', np.unique(imdb_ages), imdb_ages)
@@ -191,6 +211,10 @@ def main():
         imdb_imgs.shape, imdb_genders.shape,
         imdb_ages.shape,
         imdb_emotions.shape))
+
+    if input_wiki_path:
+        # loadk wiki: 38138 images
+        wiki_imgs, wiki_genders, wiki_ages, wiki_emotions = load_wiki(input_wiki_path)
 
     # load fer2013: 35887 images
     fer_imgs, fer_emotions = load_fer2013(input_emotion_path, resize=(image_size, image_size))
@@ -227,6 +251,26 @@ def main():
             imdb_genders_train.shape,
             imdb_genders_val.shape, imdb_ages_train.shape,
             imdb_ages_val.shape, imdb_emotions_train.shape, imdb_emotions_val.shape))
+
+    if input_wiki_path:
+        # split wiki into train and validate set
+        wiki_imgs_train, wiki_imgs_val, wiki_genders_train, wiki_genders_val, wiki_ages_train, wiki_ages_val, wiki_emotions_train, wiki_emotions_val \
+            = train_test_split(
+            wiki_imgs,
+            wiki_genders,
+            wiki_ages,
+            wiki_emotions,
+            test_size=validation_split,
+            shuffle=False)
+        print(
+            'wiki_imgs_train.shape: {}, wiki_imgs_val.shape: {}, wiki_genders_train.shape: {}, wiki_genders_val.shape: {}, wiki_ages_train.shape: {} \
+            , wiki_ages_val.shape: {}, wiki_emotions_train.shape: {}, wiki_emotions_val.shape: {}'.format(
+                wiki_imgs_train.shape,
+                wiki_imgs_val.shape,
+                wiki_genders_train.shape,
+                wiki_genders_val.shape, wiki_ages_train.shape,
+                wiki_ages_val.shape, wiki_emotions_train.shape, wiki_emotions_val.shape))
+    
     # split fer2013 into train and validate set
     fer_imgs_train, fer_imgs_val, fer_genders_train, fer_genders_val, fer_ages_train, fer_ages_val, fer_emotions_train, fer_emotions_val \
         = train_test_split(
@@ -251,7 +295,14 @@ def main():
     y_genders_val = np.vstack((imdb_genders_val, fer_genders_val))
     y_ages_val = np.vstack((imdb_ages_val, fer_ages_val))
     y_emotions_val = np.vstack((imdb_emotions_val, fer_emotions_val))
+    # merge wiki validate set with above
+    if input_wiki_path:
+        X_val = np.vstack((X_val, wiki_imgs_val))
+        y_genders_val = np.vstack((y_genders_val, wiki_genders_val))
+        y_ages_val = np.vstack((y_ages_val, wiki_ages_val))
+        y_emotions_val = np.vstack((y_emotions_val, wiki_emotions_val))
 
+    # model = get_mobilenet_v2()
     model = get_opconty_shufflenet_v2()
     opt = get_optimizer(opt_name, lr)
     # model.compile(optimizer=opt,
@@ -319,11 +370,15 @@ def main():
     #                     'output_age': dict(enumerate(age_class_weight)),
     #                     'output_emotion': dict(enumerate(emotion_class_weight))}
 
+    if input_wiki_path:
+        train_length = len(imdb_imgs_train) + len(fer_imgs_train) + len(wiki_imgs_train)
+    else:
+        train_length = len(imdb_imgs_train) + len(fer_imgs_train)
     hist = model.fit_generator(
         generator=sample_generator((imdb_imgs_train, imdb_genders_train, imdb_ages_train, imdb_emotions_train),
                                    (fer_imgs_train, fer_genders_train, fer_ages_train, fer_emotions_train),
                                    batch_size=32),
-        steps_per_epoch=(len(imdb_imgs_train) + len(fer_imgs_train)) // batch_size,
+        steps_per_epoch=train_length // batch_size,
         validation_data=(X_val, [y_genders_val, y_ages_val, y_emotions_val]),
         epochs=nb_epochs, verbose=1,
         callbacks=callbacks)
