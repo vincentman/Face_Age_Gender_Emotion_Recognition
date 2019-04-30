@@ -120,13 +120,15 @@ def get_optimizer(opt_name, lr):
 
 
 def myloss(y_true, y_pred):
-    x = K.switch(K.equal(y_true[0], tf.constant(-1.0))[0], tf.constant(0.0),
-                 keras.losses.categorical_crossentropy(y_true, y_pred))
+    x = keras.losses.categorical_crossentropy(y_true, y_pred)
+    # x = K.switch(K.equal(y_true[0], tf.constant(-1.0))[0], tf.constant(0.0),
+    #              keras.losses.categorical_crossentropy(y_true, y_pred))
     # x = K.switch(K.equal(y_true[0], tf.constant(-1.0))[0], tf.constant(0.0),
     #              -K.categorical_crossentropy(y_true, y_pred))
     # x = K.switch(K.equal(tf.cast(y_true[0], tf.int8), tf.constant(-1, dtype=tf.int8))[0], tf.constant(0.0),
     #              K.categorical_crossentropy(y_true, y_pred))
-    return K.sum(x)
+    return K.mean(x)
+    # return K.sum(x)
 
 
 def sample_generator(imdb_train, fer_train, batch_size=32):
