@@ -1,6 +1,6 @@
 from keras.applications.mobilenet_v2 import MobileNetV2
 from keras.models import Model
-from keras.layers import Dense, Flatten
+from keras.layers import Dense, Flatten, Conv2D
 from keras.regularizers import l2
 from kerascv.model_provider import get_model as kecv_get_model
 from opconty_shufflenetv2 import ShuffleNetV2
@@ -56,13 +56,25 @@ def get_opconty_shufflenet_v2(weight_decay=0.0005):
 
     for layer in opconty_model.layers:
         layer.trainable = True
+
+    l2_regularizer = l2(weight_decay) if weight_decay else None
+
+    for layer in opconty_model.layers:
+        if isinstance(layer, Conv2D) or isinstance(layer, Dense):
+            layer.kernel_regularizer = l2_regularizer
+
+    # for layer in opconty_model.layers:
+    #     if hasattr(layer, 'kernel_regularizer'):
+    #         print('layer({}): kernel_regularizer = {}, l2 = {}'.format(layer.name, layer.kernel_regularizer,
+    #                                                                    layer.kernel_regularizer.l2))
+
     net_layer_len = len(opconty_model.layers)
     flatten = opconty_model.layers[net_layer_len - 1].output
-    predictions_g = Dense(2, activation='softmax', kernel_regularizer=l2(weight_decay), name='output_gender')(
+    predictions_g = Dense(2, activation='softmax', kernel_regularizer=l2_regularizer, name='output_gender')(
         flatten)
-    predictions_a = Dense(101, activation='softmax', kernel_regularizer=l2(weight_decay), name='output_age')(
+    predictions_a = Dense(101, activation='softmax', kernel_regularizer=l2_regularizer, name='output_age')(
         flatten)
-    predictions_e = Dense(7, activation='softmax', kernel_regularizer=l2(weight_decay), name='output_emotion')(
+    predictions_e = Dense(7, activation='softmax', kernel_regularizer=l2_regularizer, name='output_emotion')(
         flatten)
     model = Model(inputs=opconty_model.layers[0].input, outputs=[predictions_g, predictions_a, predictions_e])
     # model.summary()
