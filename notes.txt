@@ -15,7 +15,7 @@ emotion model:
     (2) fer2013_mini_XCEPTION.99-0.65.hdf5
         => https://github.com/oarriaga/face_classification/tree/master/trained_models/emotion_models
 
-* 目前最好的 model: my_trained/18/model.h5
+* 目前最好的 model: my_trained/21/weights.09-3.83.hdf5
 
 -----------------------------------------------------------------------------------------------------------
 == GPU 記憶體佔用量 ==

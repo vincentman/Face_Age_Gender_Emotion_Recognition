@@ -421,8 +421,7 @@ val_loss: 3.86597 (best)
 ==>
 python3 train_shufflenet.py
 --input_agender
-/media/vincentkao/Data/face_AGE_estimation/age-gender-estimation
-data/imdb_db.mat
+/media/vincentkao/Data/face_AGE_estimation/age-gender-estimation/data/imdb_db.mat
 --input_wiki
 /media/vincentkao/Data/face_AGE_estimation/age-gender-estimation/data/wiki_db.mat
 --input_emotion
@@ -451,8 +450,7 @@ val_loss: 3.83922 (best)
 ==>
 python3 train_shufflenet.py
 --input_agender
-/media/vincentkao/Data/face_AGE_estimation/age-gender-estimation
-data/imdb_db.mat
+/media/vincentkao/Data/face_AGE_estimation/age-gender-estimation/data/imdb_db.mat
 --input_wiki
 /media/vincentkao/Data/face_AGE_estimation/age-gender-estimation/data/wiki_db.mat
 --input_emotion
@@ -472,3 +470,32 @@ start_time: 2019-04-28 18:45:13, end_time: 2019-04-28 20:09:48
 loss: 1.8884 (last)
 val_loss: 3.83235 (best)
 * 訓練時間：約1小時24分
+
+-------------------------------------------------------------------------------------------------------------
+*** 21. compared with 20.
+1) get_opconty_shufflenet_v2(): add weight decay for Conv2D layers
+==>
+python3 train_shufflenet.py
+--input_agender
+/media/vincentkao/Data/face_AGE_estimation/age-gender-estimation/data/imdb_db.mat
+--input_wiki
+/media/vincentkao/Data/face_AGE_estimation/age-gender-estimation/data/wiki_db.mat
+--input_emotion
+/media/vincentkao/Data/datasets/fer2013/fer2013.csv
+--nb_epochs
+30
+--staircase_decay_at_epochs
+(5,8,)
+--lr
+0.1
+--validation_split
+0.15
+--batch_size
+64
+==>
+loss: 1.8853 (last)
+val_loss: 3.8306 (best)
+start_time: 2019-04-29 17:38:40, end_time: 2019-04-29 19:03:20
+* 影片實測(demo.py)：模型 weights.09-3.83.hdf5，年齡預測效果比18.來得穩定（不會一直波動亂跳）
+* 訓練時間：約1小時25分
+* weight decay 並沒有減少 overfitting 現象
