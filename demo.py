@@ -43,13 +43,7 @@ FACE_MODEL_PATH = 'pretrained_models/haarcascade_frontalface_alt.xml'
 FACE_CAFFE_MODEL_TXT_PATH = 'pretrained_models/deploy.prototxt'
 FACE_CAFFE_MODEL_PATH = 'pretrained_models/res10_300x300_ssd_iter_140000.caffemodel'
 
-# MY_MODEL_PATH = 'my_trained/01/weights.09-3.70.hdf5'  # 16,16,epoch30: normal
-# MY_MODEL_PATH = 'my_trained/02/weights.03-4.73.hdf5'  # 20,12,epoch30: abnormal
-# MY_MODEL_PATH = 'checkpoints/weights.09-3.83.hdf5'
-# MY_MODEL_PATH = 'checkpoints/model.h5'
 MY_MODEL_PATH = 'my_trained/21/weights.09-3.83.hdf5'
-# MY_MODEL_PATH = 'my_trained/17/weights.02-3.85.hdf5'
-# MY_MODEL_PATH = 'my_trained/09/weights.05-3.74.hdf5'
 
 # saved dir for detected images
 DET_EMOTION_DIR = 'output/emotion_images'
@@ -198,21 +192,8 @@ if __name__ == '__main__':
             face_img, cropped, no_resized_img = crop_bounding_box(frame, face, margin=.4, size=(FACE_SIZE, FACE_SIZE))
             (x, y, w, h) = cropped
 
-            # Get AGE and GENDER and EMOTION
-            # agender_detect_start = time.time()
-            # (age, gender) = get_age_gender(face_img)
-            # agender_detect_end = time.time()
-            # print('Predicting age and gender for one face: {:.2f}ms'.format(
-            #     (agender_detect_end - agender_detect_start) * 1000))
-            # emotion_detect_start = time.time()
-            # emotion = get_emotion(face_img)
-            # emotion_detect_end = time.time()
-            # print(
-            #     'Predicting emotion for one face: {:.2f}ms'.format((emotion_detect_end - emotion_detect_start) * 1000))
-
             # get gender, age, emotion
             predict_start = time.time()
-            # get_gender_age_emotion(face_img)
             (gender, age, emotion) = get_gender_age_emotion(face_img)
             predict_end = time.time()
             print('Predicting gender, age, and emotion for one face: {:.2f}ms'.format(
