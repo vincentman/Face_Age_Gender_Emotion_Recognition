@@ -71,7 +71,7 @@ def make_dirs_for_emotion(video_file_name):
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--use_webcam', type=str2bool, default=True, help='Specify if use webcam')
+    parser.add_argument('--use_webcam', type=str2bool, default=False, help='Specify if use webcam')
     parser.add_argument('--webcam_port', type=int, default=0, help='Specify webcam port')
     parser.add_argument('--input_video_path', type=str, default='input/dinner.mp4', help='Specify input video path')
     parser.add_argument('--output_emotion_images', type=str2bool, default=False,
