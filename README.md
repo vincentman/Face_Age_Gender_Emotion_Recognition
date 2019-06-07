@@ -10,30 +10,30 @@ python3 demo.py input_video_path="input/dinner.mp4" \
 * Prepare dataset
   * For age and gender: IMDB + WiKi[6]
   * For emotion: FER-2013[7]
-* Instructions for demo
+* Instructions for train
   * If train with backone 'ShuffleNet V2', using train_shufflenet.py
   * If train with backone 'WideResNet', using train.py
   * imdb_db.mat, wiki_db.mat: please refer to [2] to run "create_db.py"
-  * fer2013.csv": download from [here](https://www.kaggle.com/c/challenges-in-representation-learning-facial-expression-recognition-challenge/data)
-```
-python3 train_shufflenet.py
---input_agender
-data/imdb_db.mat
---input_wiki
-data/wiki_db.mat
---input_emotion
-data/fer2013.csv
---nb_epochs
-30
---staircase_decay_at_epochs
-(5,8,)
---lr
-0.1
---validation_split
-0.15
---batch_size
-64
-```
+  * fer2013.csv": download from [Kaggle](https://www.kaggle.com/c/challenges-in-representation-learning-facial-expression-recognition-challenge/data)
+    ```
+    python3 train_shufflenet.py
+    --input_agender
+    data/imdb_db.mat
+    --input_wiki
+    data/wiki_db.mat
+    --input_emotion
+    data/fer2013.csv
+    --nb_epochs
+    30
+    --staircase_decay_at_epochs
+    (5,8,)
+    --lr
+    0.1
+    --validation_split
+    0.15
+    --batch_size
+    64
+    ```
 
 ## References
 [1] R. Rothe, R. Timofte, and L. V. Gool, "DEX: Deep EXpectation of apparent age from a single image," in Proc. of ICCV, 2015.  
