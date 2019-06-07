@@ -1,10 +1,12 @@
 # Age, gender, emotion estimation
 ## Demo
+![demo_dinner](demo_files/demo_dinner.gif)
+![demo_obama](demo_files/demo_obama.gif)
 
 * Instructions for demo
-```sh
-python3 demo.py input_video_path="input/dinner.mp4" \
-```
+  ```sh
+  python3 demo.py input_video_path="input/dinner.mp4" \
+  ```
 
 ## Train
 * Prepare dataset
@@ -15,25 +17,25 @@ python3 demo.py input_video_path="input/dinner.mp4" \
   * If train with backone 'WideResNet', using train.py
   * imdb_db.mat, wiki_db.mat: please refer to [2] to run "create_db.py"
   * fer2013.csv": download from [Kaggle](https://www.kaggle.com/c/challenges-in-representation-learning-facial-expression-recognition-challenge/data)
-    ```
-    python3 train_shufflenet.py
-    --input_agender
-    data/imdb_db.mat
-    --input_wiki
-    data/wiki_db.mat
-    --input_emotion
-    data/fer2013.csv
-    --nb_epochs
-    30
-    --staircase_decay_at_epochs
-    (5,8,)
-    --lr
-    0.1
-    --validation_split
-    0.15
-    --batch_size
-    64
-    ```
+   ```
+   python3 train_shufflenet.py
+   --input_agender
+   data/imdb_db.mat
+   --input_wiki
+   data/wiki_db.mat
+   --input_emotion
+   data/fer2013.csv
+   --nb_epochs
+   30
+   --staircase_decay_at_epochs
+   (5,8,)
+   --lr
+   0.1
+   --validation_split
+   0.15
+   --batch_size
+   64
+   ```
 
 ## References
 [1] R. Rothe, R. Timofte, and L. V. Gool, "DEX: Deep EXpectation of apparent age from a single image," in Proc. of ICCV, 2015.  
